@@ -32,21 +32,50 @@ router.get('/dashboard', auth, async (req, res) => {
     const year = parseInt(req.query.year) || new Date().getFullYear();
     const start = new Date(year, 0, 1);
     const end = new Date(year + 1, 0, 1);
+    const now = new Date();
 
-    const expenses = await Expense.find({
-      user: req.user.id,
-      date: { $gte: start, $lt: end },
-    });
+    const [expenses, trips] = await Promise.all([
+      Expense.find({ user: req.user.id, date: { $gte: start, $lt: end } }),
+      Trip.find({ user: req.user.id }),
+    ]);
 
     const totalSpent = expenses.reduce((s, e) => s + e.amount, 0);
     const byMonth = Array(12).fill(0);
-    expenses.forEach(e => {
-      byMonth[new Date(e.date).getMonth()] += e.amount;
+    expenses.forEach(e => { byMonth[new Date(e.date).getMonth()] += e.amount; });
+
+    const categoryBreakdown = {};
+    expenses.forEach(e => { categoryBreakdown[e.category] = (categoryBreakdown[e.category] || 0) + e.amount; });
+
+    // Find active trip (startDate <= now <= endDate)
+    const activeTrip = trips.find(t => {
+      if (!t.startDate) return false;
+      const s = new Date(t.startDate);
+      const e = t.endDate ? new Date(t.endDate) : null;
+      return now >= s && (!e || now <= e);
     });
 
-    const trips = await Trip.find({ user: req.user.id });
+    let activeTripData = null;
+    if (activeTrip) {
+      const tripExpenses = await Expense.find({ user: req.user.id, trip: activeTrip._id });
+      const tripTotalSpent = tripExpenses.reduce((s, e) => s + e.amount, 0);
+      activeTripData = { ...activeTrip.toObject(), totalSpent: tripTotalSpent, status: 'active' };
+    }
 
-    res.json({ totalSpent, byMonth, tripCount: trips.length, expenseCount: expenses.length });
+    const upcomingCount = trips.filter(t => t.startDate && new Date(t.startDate) > now).length;
+    const completedCount = trips.filter(t => t.endDate && new Date(t.endDate) < now).length;
+
+    res.json({
+      dashboard: {
+        totalSpent,
+        byMonth,
+        categoryBreakdown,
+        tripCount: trips.length,
+        upcomingCount,
+        completedCount,
+        expenseCount: expenses.length,
+        activeTrip: activeTripData,
+      }
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
