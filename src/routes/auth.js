@@ -38,10 +38,18 @@ router.post('/login', async (req, res) => {
 
 router.post('/google', async (req, res) => {
   try {
-    const { idToken } = req.body;
-    const ticket = await client.verifyIdToken({ idToken, audience: process.env.GOOGLE_CLIENT_ID });
-    const payload = ticket.getPayload();
-    const { sub: googleId, email, name, picture } = payload;
+    const { idToken, userInfo } = req.body;
+    let googleId, email, name, picture;
+
+    if (idToken) {
+      const ticket = await client.verifyIdToken({ idToken, audience: process.env.GOOGLE_CLIENT_ID });
+      const payload = ticket.getPayload();
+      ({ sub: googleId, email, name, picture } = payload);
+    } else if (userInfo) {
+      ({ id: googleId, email, name, picture } = userInfo);
+    } else {
+      return res.status(400).json({ message: 'No auth data provided' });
+    }
 
     let user = await User.findOne({ $or: [{ googleId }, { email }] });
     if (user) {
