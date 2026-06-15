@@ -6,6 +6,9 @@ const userSchema = new mongoose.Schema({
   password: { type: String },
   googleId: { type: String },
   avatar: { type: String },
+  profilePhoto: { type: String },
+  avatarIcon: { type: String },
+  avatarBg: { type: String },
   currency: { type: String, default: 'INR' },
   homeCurrency: { type: String, default: 'INR' },
   subscription: {

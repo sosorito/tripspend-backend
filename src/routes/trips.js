@@ -1,5 +1,6 @@
 const router = require('express').Router();
 const Trip = require('../models/Trip');
+const Expense = require('../models/Expense');
 const auth = require('../middleware/auth');
 
 function computeStatus(trip) {
@@ -14,12 +15,17 @@ function computeStatus(trip) {
 
 router.get('/', auth, async (req, res) => {
   try {
-    const filter = { user: req.user.id };
-    if (req.query.status) filter.status = req.query.status;
     const trips = await Trip.find({ user: req.user.id }).sort({ startDate: -1 });
+    const expenseAgg = await Expense.aggregate([
+      { $match: { user: req.user.id } },
+      { $group: { _id: '$trip', totalSpent: { $sum: '$amount' } } },
+    ]);
+    const spentMap = {};
+    expenseAgg.forEach(e => { spentMap[e._id.toString()] = e.totalSpent; });
     const updated = trips.map(t => {
       const obj = t.toObject();
       obj.status = computeStatus(obj);
+      obj.totalSpent = spentMap[obj._id.toString()] || 0;
       return obj;
     });
     res.json({ trips: updated });

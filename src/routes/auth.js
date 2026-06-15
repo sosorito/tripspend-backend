@@ -13,10 +13,10 @@ function makeToken(user) {
 
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, currency } = req.body;
     if (await User.findOne({ email })) return res.status(400).json({ message: 'Email already exists' });
     const hash = await bcrypt.hash(password, 10);
-    const user = await User.create({ name, email, password: hash });
+    const user = await User.create({ name, email, password: hash, currency: currency || 'INR', homeCurrency: currency || 'INR' });
     res.json({ token: makeToken(user), user });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -75,12 +75,16 @@ router.get('/me', authMiddleware, async (req, res) => {
 
 router.put('/profile', authMiddleware, async (req, res) => {
   try {
-    const { name, currency, homeCurrency, avatar } = req.body;
-    const user = await User.findByIdAndUpdate(
-      req.user.id,
-      { name, currency, homeCurrency, avatar },
-      { new: true }
-    ).select('-password');
+    const { name, currency, homeCurrency, avatar, profilePhoto, avatarIcon, avatarBg } = req.body;
+    const update = {};
+    if (name !== undefined) update.name = name;
+    if (currency !== undefined) update.currency = currency;
+    if (homeCurrency !== undefined) update.homeCurrency = homeCurrency;
+    if (avatar !== undefined) update.avatar = avatar;
+    if (profilePhoto !== undefined) update.profilePhoto = profilePhoto;
+    if (avatarIcon !== undefined) update.avatarIcon = avatarIcon;
+    if (avatarBg !== undefined) update.avatarBg = avatarBg;
+    const user = await User.findByIdAndUpdate(req.user.id, update, { new: true }).select('-password');
     res.json({ user });
   } catch (err) {
     res.status(500).json({ message: err.message });
