@@ -2,10 +2,27 @@ const router = require('express').Router();
 const Trip = require('../models/Trip');
 const auth = require('../middleware/auth');
 
+function computeStatus(trip) {
+  if (!trip.startDate) return trip.status || 'upcoming';
+  const now = new Date();
+  const start = new Date(trip.startDate);
+  const end = trip.endDate ? new Date(trip.endDate) : null;
+  if (end && now > end) return 'completed';
+  if (now >= start) return 'active';
+  return 'upcoming';
+}
+
 router.get('/', auth, async (req, res) => {
   try {
+    const filter = { user: req.user.id };
+    if (req.query.status) filter.status = req.query.status;
     const trips = await Trip.find({ user: req.user.id }).sort({ startDate: -1 });
-    res.json({ trips });
+    const updated = trips.map(t => {
+      const obj = t.toObject();
+      obj.status = computeStatus(obj);
+      return obj;
+    });
+    res.json({ trips: updated });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -15,7 +32,9 @@ router.get('/:id', auth, async (req, res) => {
   try {
     const trip = await Trip.findOne({ _id: req.params.id, user: req.user.id });
     if (!trip) return res.status(404).json({ message: 'Trip not found' });
-    res.json({ trip });
+    const obj = trip.toObject();
+    obj.status = computeStatus(obj);
+    res.json({ trip: obj });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
