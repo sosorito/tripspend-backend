@@ -9,6 +9,7 @@ const userSchema = new mongoose.Schema({
   profilePhoto: { type: String },
   avatarIcon: { type: String },
   avatarBg: { type: String },
+  avatarId: { type: Number },
   currency: { type: String, default: 'INR' },
   homeCurrency: { type: String, default: 'INR' },
   subscription: {

@@ -4,6 +4,7 @@ const Expense = require('../models/Expense');
 const auth = require('../middleware/auth');
 
 function computeStatus(trip) {
+  if (trip.status === 'completed') return 'completed';
   if (!trip.startDate) return trip.status || 'upcoming';
   const now = new Date();
   const start = new Date(trip.startDate);
@@ -18,7 +19,7 @@ router.get('/', auth, async (req, res) => {
     const trips = await Trip.find({ user: req.user.id }).sort({ startDate: -1 });
     const expenseAgg = await Expense.aggregate([
       { $match: { user: req.user.id } },
-      { $group: { _id: '$trip', totalSpent: { $sum: '$amount' } } },
+      { $group: { _id: '$trip', totalSpent: { $sum: { $ifNull: ['$amountInHomeCurrency', '$amount'] } } } },
     ]);
     const spentMap = {};
     expenseAgg.forEach(e => { spentMap[e._id.toString()] = e.totalSpent; });
@@ -43,6 +44,11 @@ router.get('/:id', auth, async (req, res) => {
     if (!trip) return res.status(404).json({ message: 'Trip not found' });
     const obj = trip.toObject();
     obj.status = computeStatus(obj);
+    const agg = await Expense.aggregate([
+      { $match: { trip: trip._id, user: req.user.id } },
+      { $group: { _id: null, totalSpent: { $sum: { $ifNull: ['$amountInHomeCurrency', '$amount'] } } } },
+    ]);
+    obj.totalSpent = agg[0]?.totalSpent || 0;
     res.json({ trip: obj });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -75,6 +81,7 @@ router.put('/:id', auth, async (req, res) => {
 router.delete('/:id', auth, async (req, res) => {
   try {
     await Trip.findOneAndDelete({ _id: req.params.id, user: req.user.id });
+    await Expense.deleteMany({ trip: req.params.id, user: req.user.id });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ message: err.message });

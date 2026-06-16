@@ -75,7 +75,7 @@ router.get('/me', authMiddleware, async (req, res) => {
 
 router.put('/profile', authMiddleware, async (req, res) => {
   try {
-    const { name, currency, homeCurrency, avatar, profilePhoto, avatarIcon, avatarBg } = req.body;
+    const { name, currency, homeCurrency, avatar, profilePhoto, avatarIcon, avatarBg, avatarId } = req.body;
     const update = {};
     if (name !== undefined) update.name = name;
     if (currency !== undefined) update.currency = currency;
@@ -84,6 +84,7 @@ router.put('/profile', authMiddleware, async (req, res) => {
     if (profilePhoto !== undefined) update.profilePhoto = profilePhoto;
     if (avatarIcon !== undefined) update.avatarIcon = avatarIcon;
     if (avatarBg !== undefined) update.avatarBg = avatarBg;
+    if (avatarId !== undefined) update.avatarId = avatarId;
     const user = await User.findByIdAndUpdate(req.user.id, update, { new: true }).select('-password');
     res.json({ user });
   } catch (err) {
@@ -113,7 +114,7 @@ router.post('/verify-purchase', authMiddleware, async (req, res) => {
     const expiresAt = isLifetime ? null : new Date(Date.now() + (isYearly ? 365 : 30) * 24 * 60 * 60 * 1000);
 
     const user = await User.findByIdAndUpdate(req.user.id, {
-      'subscription.type': 'premium',
+      'subscription.type': productId === 'premium_yearly' ? 'yearly' : productId === 'premium_lifetime' ? 'lifetime' : 'monthly',
       'subscription.expiresAt': expiresAt,
       'subscription.purchaseToken': purchaseToken,
     }, { new: true }).select('-password');

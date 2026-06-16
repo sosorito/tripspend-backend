@@ -9,7 +9,7 @@ router.get('/trip/:tripId', auth, async (req, res) => {
     const trip = await Trip.findOne({ _id: req.params.tripId, user: req.user.id });
     if (!trip) return res.status(404).json({ message: 'Trip not found' });
 
-    const totalSpent = expenses.reduce((s, e) => s + e.amount, 0);
+    const totalSpent = expenses.reduce((s, e) => s + (e.amountInHomeCurrency ?? e.amount), 0);
     const budget = trip.budget || 0;
     const remaining = budget - totalSpent;
     const budgetUsagePercent = budget > 0 ? Math.round((totalSpent / budget) * 100) : 0;
@@ -21,7 +21,7 @@ router.get('/trip/:tripId', auth, async (req, res) => {
 
     const categoryBreakdown = {};
     expenses.forEach(e => {
-      categoryBreakdown[e.category] = (categoryBreakdown[e.category] || 0) + e.amount;
+      categoryBreakdown[e.category] = (categoryBreakdown[e.category] || 0) + (e.amountInHomeCurrency ?? e.amount);
     });
 
     res.json({
@@ -55,14 +55,13 @@ router.get('/dashboard', auth, async (req, res) => {
       Trip.find({ user: req.user.id }),
     ]);
 
-    const totalSpent = expenses.reduce((s, e) => s + e.amount, 0);
+    const totalSpent = expenses.reduce((s, e) => s + (e.amountInHomeCurrency ?? e.amount), 0);
     const byMonth = Array(12).fill(0);
-    expenses.forEach(e => { byMonth[new Date(e.date).getMonth()] += e.amount; });
+    expenses.forEach(e => { byMonth[new Date(e.date).getMonth()] += (e.amountInHomeCurrency ?? e.amount); });
 
     const categoryBreakdown = {};
-    expenses.forEach(e => { categoryBreakdown[e.category] = (categoryBreakdown[e.category] || 0) + e.amount; });
+    expenses.forEach(e => { categoryBreakdown[e.category] = (categoryBreakdown[e.category] || 0) + (e.amountInHomeCurrency ?? e.amount); });
 
-    // Find active trip (startDate <= now <= endDate)
     const activeTrip = trips.find(t => {
       if (!t.startDate) return false;
       const s = new Date(t.startDate);
@@ -73,9 +72,11 @@ router.get('/dashboard', auth, async (req, res) => {
     let activeTripData = null;
     if (activeTrip) {
       const tripExpenses = await Expense.find({ user: req.user.id, trip: activeTrip._id });
-      const tripTotalSpent = tripExpenses.reduce((s, e) => s + e.amount, 0);
+      const tripTotalSpent = tripExpenses.reduce((s, e) => s + (e.amountInHomeCurrency ?? e.amount), 0);
       activeTripData = { ...activeTrip.toObject(), totalSpent: tripTotalSpent, status: 'active' };
     }
+
+    const recentExpenses = await Expense.find({ user: req.user.id }).sort({ date: -1 }).limit(5);
 
     const upcomingCount = trips.filter(t => t.startDate && new Date(t.startDate) > now).length;
     const completedCount = trips.filter(t => t.endDate && new Date(t.endDate) < now).length;
@@ -90,6 +91,7 @@ router.get('/dashboard', auth, async (req, res) => {
         completedCount,
         expenseCount: expenses.length,
         activeTrip: activeTripData,
+        recentExpenses,
       }
     });
   } catch (err) {
