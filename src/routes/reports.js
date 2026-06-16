@@ -7,19 +7,35 @@ router.get('/trip/:tripId', auth, async (req, res) => {
   try {
     const expenses = await Expense.find({ user: req.user.id, trip: req.params.tripId });
     const trip = await Trip.findOne({ _id: req.params.tripId, user: req.user.id });
+    if (!trip) return res.status(404).json({ message: 'Trip not found' });
 
     const totalSpent = expenses.reduce((s, e) => s + e.amount, 0);
-    const byCategory = {};
+    const budget = trip.budget || 0;
+    const remaining = budget - totalSpent;
+    const budgetUsagePercent = budget > 0 ? Math.round((totalSpent / budget) * 100) : 0;
+
+    const tripDays = trip.startDate && trip.endDate
+      ? Math.max(1, Math.ceil((new Date(trip.endDate) - new Date(trip.startDate)) / (1000 * 60 * 60 * 24)))
+      : 1;
+    const numberOfTravelers = trip.numberOfTravelers || 1;
+
+    const categoryBreakdown = {};
     expenses.forEach(e => {
-      byCategory[e.category] = (byCategory[e.category] || 0) + e.amount;
+      categoryBreakdown[e.category] = (categoryBreakdown[e.category] || 0) + e.amount;
     });
 
     res.json({
       trip,
-      totalSpent,
-      budget: trip?.budget || 0,
-      remaining: (trip?.budget || 0) - totalSpent,
-      byCategory,
+      summary: {
+        totalBudget: budget,
+        totalSpent,
+        remaining,
+        budgetUsagePercent,
+        perDayAverage: Math.round(totalSpent / tripDays),
+        perPersonAverage: Math.round(totalSpent / numberOfTravelers),
+        tripDays,
+      },
+      categoryBreakdown,
       expenses,
     });
   } catch (err) {

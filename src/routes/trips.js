@@ -22,12 +22,15 @@ router.get('/', auth, async (req, res) => {
     ]);
     const spentMap = {};
     expenseAgg.forEach(e => { spentMap[e._id.toString()] = e.totalSpent; });
-    const updated = trips.map(t => {
+    let updated = trips.map(t => {
       const obj = t.toObject();
       obj.status = computeStatus(obj);
       obj.totalSpent = spentMap[obj._id.toString()] || 0;
       return obj;
     });
+    if (req.query.status) {
+      updated = updated.filter(t => t.status === req.query.status);
+    }
     res.json({ trips: updated });
   } catch (err) {
     res.status(500).json({ message: err.message });
