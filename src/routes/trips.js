@@ -1,4 +1,5 @@
 const router = require('express').Router();
+const mongoose = require('mongoose');
 const Trip = require('../models/Trip');
 const Expense = require('../models/Expense');
 const auth = require('../middleware/auth');
@@ -18,7 +19,7 @@ router.get('/', auth, async (req, res) => {
   try {
     const trips = await Trip.find({ user: req.user.id }).sort({ startDate: -1 });
     const expenseAgg = await Expense.aggregate([
-      { $match: { user: req.user.id } },
+      { $match: { user: new mongoose.Types.ObjectId(req.user.id) } },
       { $group: { _id: '$trip', totalSpent: { $sum: { $ifNull: ['$amountInHomeCurrency', '$amount'] } } } },
     ]);
     const spentMap = {};
@@ -45,7 +46,7 @@ router.get('/:id', auth, async (req, res) => {
     const obj = trip.toObject();
     obj.status = computeStatus(obj);
     const agg = await Expense.aggregate([
-      { $match: { trip: trip._id, user: req.user.id } },
+      { $match: { trip: trip._id, user: new mongoose.Types.ObjectId(req.user.id) } },
       { $group: { _id: null, totalSpent: { $sum: { $ifNull: ['$amountInHomeCurrency', '$amount'] } } } },
     ]);
     obj.totalSpent = agg[0]?.totalSpent || 0;
