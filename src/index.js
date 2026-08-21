@@ -21,6 +21,7 @@ app.use('/api/trips', require('./routes/trips'));
 app.use('/api/expenses', require('./routes/expenses'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/users', require('./routes/users'));
+app.use('/api/gmb', require('./routes/gmb'));
 
 app.get('/api/version', (req, res) => {
   res.json({ version: '1.5.2', buildNumber: 47, forceUpdate: false, downloadUrl: '', message: '' });
