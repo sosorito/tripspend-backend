@@ -24,8 +24,10 @@ router.get('/accounts', auth, async (req, res) => {
       }
     );
     const data = await response.json();
+    console.log('[GMB] accounts response:', JSON.stringify(data));
     res.json(data);
   } catch (err) {
+    console.error('[GMB] accounts error:', err.message);
     res.status(500).json({ message: err.message });
   }
 });
