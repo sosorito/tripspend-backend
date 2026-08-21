@@ -19,9 +19,13 @@ async function getToken() {
   return token;
 }
 
+function getTokenFromRequest(req) {
+  return req.headers['x-gmb-token'] || null;
+}
+
 router.get('/accounts', auth, async (req, res) => {
   try {
-    const token = await getToken();
+    const token = getTokenFromRequest(req) || await getToken();
     const response = await fetch(
       'https://mybusinessaccountmanagement.googleapis.com/v1/accounts',
       { headers: { Authorization: `Bearer ${token}` } }
@@ -37,7 +41,7 @@ router.get('/accounts', auth, async (req, res) => {
 
 router.get('/locations/:accountId', auth, async (req, res) => {
   try {
-    const token = await getToken();
+    const token = getTokenFromRequest(req) || await getToken();
     const response = await fetch(
       `https://mybusinessbusinessinformation.googleapis.com/v1/accounts/${req.params.accountId}/locations?readMask=name,title,storefrontAddress,websiteUri,primaryCategory`,
       { headers: { Authorization: `Bearer ${token}` } }
@@ -52,7 +56,7 @@ router.get('/locations/:accountId', auth, async (req, res) => {
 
 router.get('/reviews/:accountId/:locationId', auth, async (req, res) => {
   try {
-    const token = await getToken();
+    const token = getTokenFromRequest(req) || await getToken();
     const response = await fetch(
       `https://mybusiness.googleapis.com/v4/accounts/${req.params.accountId}/locations/${req.params.locationId}/reviews`,
       { headers: { Authorization: `Bearer ${token}` } }
@@ -66,7 +70,7 @@ router.get('/reviews/:accountId/:locationId', auth, async (req, res) => {
 
 router.put('/reviews/:accountId/:locationId/:reviewId/reply', auth, async (req, res) => {
   try {
-    const token = await getToken();
+    const token = getTokenFromRequest(req) || await getToken();
     const response = await fetch(
       `https://mybusiness.googleapis.com/v4/accounts/${req.params.accountId}/locations/${req.params.locationId}/reviews/${req.params.reviewId}/reply`,
       {
