@@ -17,6 +17,9 @@ const tripSchema = new mongoose.Schema({
   numberOfTravelers: { type: Number, default: 1 },
   coverImage: { type: String },
   notes: { type: String },
+  checklist: [mongoose.Schema.Types.Mixed],
+  budgetAlerted: { p50: Boolean, p90: Boolean, p100: Boolean },
+  notified: { dayBefore: Boolean, twoHours: Boolean, tripStart: Boolean },
   transportation: [{
     type: { type: String },
     from: String,

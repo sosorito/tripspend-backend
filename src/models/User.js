@@ -17,6 +17,7 @@ const userSchema = new mongoose.Schema({
     expiresAt: { type: Date },
     purchaseToken: { type: String },
   },
+  fcmToken: { type: String },
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);
