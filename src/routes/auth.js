@@ -38,14 +38,27 @@ router.post('/login', async (req, res) => {
 
 router.post('/google', async (req, res) => {
   try {
-    const { idToken, userInfo } = req.body;
+    const { idToken, firebaseToken, userInfo } = req.body;
     let googleId, email, name, picture;
 
-    if (idToken) {
+    if (firebaseToken) {
+      let decoded;
+      try {
+        require('../services/fcm'); // initializes firebase-admin
+        decoded = await require('firebase-admin').auth().verifyIdToken(firebaseToken);
+      } catch (e) {
+        console.warn('[auth/google] firebase token rejected:', e?.message);
+        return res.status(401).json({ message: 'Google sign-in could not be verified. Please try again.' });
+      }
+      ({ uid: googleId, email, name, picture } = decoded);
+      if (!email) return res.status(400).json({ message: 'Your Google account has no email address' });
+    } else if (idToken) {
       const ticket = await client.verifyIdToken({ idToken, audience: process.env.GOOGLE_CLIENT_ID });
       const payload = ticket.getPayload();
       ({ sub: googleId, email, name, picture } = payload);
     } else if (userInfo) {
+      // UNVERIFIED: only for app builds released before firebaseToken was sent.
+      // Remove this branch once those builds are no longer in use.
       ({ id: googleId, email, name, picture } = userInfo);
     } else {
       return res.status(400).json({ message: 'No auth data provided' });

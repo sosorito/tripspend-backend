@@ -2,7 +2,8 @@ const mongoose = require('mongoose');
 
 const expenseSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  trip: { type: mongoose.Schema.Types.ObjectId, ref: 'Trip', required: true },
+  trip: { type: mongoose.Schema.Types.ObjectId, ref: 'Trip' },
+  recurring: { type: mongoose.Schema.Types.ObjectId, ref: 'RecurringExpense' },
   amount: { type: Number, required: true },
   amountInHomeCurrency: { type: Number },
   currency: { type: String, default: 'INR' },
@@ -15,5 +16,7 @@ const expenseSchema = new mongoose.Schema({
   splitWith: [{ name: String, amount: Number }],
   receipt: { type: String },
 }, { timestamps: true });
+
+expenseSchema.index({ user: 1, date: -1 });
 
 module.exports = mongoose.model('Expense', expenseSchema);

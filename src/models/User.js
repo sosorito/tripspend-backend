@@ -18,6 +18,19 @@ const userSchema = new mongoose.Schema({
     purchaseToken: { type: String },
   },
   fcmToken: { type: String },
+  // Removed items are kept with hidden: true so old expenses still show their name.
+  customCategories: [{
+    key: String,
+    label: String,
+    icon: String,
+    color: String,
+    hidden: Boolean,
+  }],
+  customPaymentMethods: [{
+    key: String,
+    label: String,
+    hidden: Boolean,
+  }],
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);
