@@ -7,6 +7,16 @@ const authMiddleware = require('../middleware/auth');
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
+// Sign-in tokens come from the app's Firebase project, which can differ from the
+// project FCM credentials belong to. Verifying needs only the project id, no key.
+const APP_FIREBASE_PROJECT = process.env.APP_FIREBASE_PROJECT_ID || 'tripspend-3a0e1';
+let verifierApp;
+function firebaseAuth() {
+  const admin = require('firebase-admin');
+  if (!verifierApp) verifierApp = admin.initializeApp({ projectId: APP_FIREBASE_PROJECT }, 'signin-verifier');
+  return verifierApp.auth();
+}
+
 function makeToken(user) {
   return jwt.sign({ id: user._id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '90d' });
 }
@@ -44,11 +54,10 @@ router.post('/google', async (req, res) => {
     if (firebaseToken) {
       let decoded;
       try {
-        require('../services/fcm'); // initializes firebase-admin
-        decoded = await require('firebase-admin').auth().verifyIdToken(firebaseToken);
+        decoded = await firebaseAuth().verifyIdToken(firebaseToken);
       } catch (e) {
         console.warn('[auth/google] firebase token rejected:', e?.message);
-        return res.status(401).json({ message: 'Google sign-in could not be verified. Please try again.' });
+        return res.status(401).json({ message: 'Google sign-in could not be verified. Please try again.', detail: e?.message });
       }
       ({ uid: googleId, email, name, picture } = decoded);
       if (!email) return res.status(400).json({ message: 'Your Google account has no email address' });
